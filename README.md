@@ -46,7 +46,7 @@ This allows full 2D or 3D scenes to be assembled directly in TensorFlow, with gr
 Using DIRT, the above example becomes:
 ```python
 import tensorflow as tf
-import DIRT
+import dirt
 
 canvas_width, canvas_height = 128, 128
 centre_x, centre_y = 32, 64
@@ -60,7 +60,7 @@ square_vertices += [centre_x, centre_y]
 square_vertices = square_vertices * 2. / [canvas_width, canvas_height] - 1.
 square_vertices = tf.concat([square_vertices, tf.zeros([4, 1]), tf.ones([4, 1])], axis=1)
 
-pixels = DIRT.rasterise(
+pixels = dirt.rasterise(
     vertices=square_vertices,
     faces=[[0, 1, 2], [0, 2, 3]],
     vertex_colors=tf.ones([4, 1]),
@@ -86,14 +86,14 @@ pixels = DIRT.rasterise(
 
 Simply clone this repository, then install with pip:
 ```
-git clone https://github.com/pmh47/DIRT.git
-cd DIRT
+git clone https://github.com/pmh47/dirt.git
+cd dirt
 pip install .
 ```
 
 If you plan to modify the DIRT code, you may prefer to install in development mode:
 ```
-cd DIRT
+cd dirt
 mkdir build ; cd build
 cmake ../csrc
 make
