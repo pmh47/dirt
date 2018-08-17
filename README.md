@@ -105,7 +105,18 @@ To sanity-check your build, run `python tests/square_test.py`, which should prod
 
 #### Troubleshooting:
 
-- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have install Mesa, this may have overwritten libGL with its own version, which will not work with DIRT
+- If the build cannot find `GL/gl.h` and `GL/glext.h`, you can get suitable versions of these by running the following from the `dirt` directory:
+    ```
+    mkdir external/GL ; cd external/GL
+    wget https://raw.githubusercontent.com/mesa3d/mesa/master/include/GL/gl.h
+    wget https://raw.githubusercontent.com/mesa3d/mesa/master/include/GL/glext.h
+    cd ../..
+    export INCLUDE=$PWD/external:$INCLUDE
+    ```
+
+- If the build cannot find `X11/Xlib.h`, install the system package `libx11-dev` or `libX11-devel`
+
+- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa, this may have overwritten libGL with its own version, which will not work with DIRT
 
 - You should ensure that compute + graphics mode is enabled (through nvidia-smi) for your GPU
 
