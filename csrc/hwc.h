@@ -6,11 +6,15 @@
 
 struct HWC
 {
-    // This captures the attributes that must be the same for two kernel-instances to share the same context / threads
+    // This captures the attributes (apart from cuda-context) that must be the same for two kernel-instances to share the same gl-context / threads
     int height, width, channels;
 
     bool operator <(HWC const &other) const {
-        return height < other.height || width < other.width || channels < other.channels;
+        return height < other.height || (
+            height == other.height && (width < other.width || (
+                width == other.width && channels < other.channels)
+            )
+        );
     }
 };
 
