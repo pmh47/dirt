@@ -116,7 +116,9 @@ To sanity-check your build, run `python tests/square_test.py`, which should prod
 
 - If the build cannot find `X11/Xlib.h`, install the system package `libx11-dev` or `libX11-devel`
 
-- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa, this may have overwritten libGL with its own version, which will not work with DIRT
+- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa or Hybris, their libGL or libEGL may be used (or may even have overwritten the Nvidia versions), and these will not work with DIRT
+
+- In some cases, a segfault occurs when using legacy OpenGL libraries instead of GLVND; setting the cmake variable `OpenGL_GL_PREFERENCE=GLVND` may fix this
 
 - You should ensure that compute + graphics mode is enabled (through nvidia-smi) for your GPU
 
