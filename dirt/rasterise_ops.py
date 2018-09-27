@@ -55,16 +55,16 @@ def rasterise(background, vertices, vertex_colors, faces, height=None, width=Non
 
 
 def rasterise_batch(background, vertices, vertex_colors, faces, height=None, width=None, channels=None, name=None):
-    """Rasterises a batch of meshes with the same topology.
+    """Rasterises a batch of meshes with the same numbers of vertices and faces.
 
-    This function takes batch-indexed `vertices`, `vertex_colors`, and `background`, and `faces` that is not batch-indexed
-    but common to all elements of the batch.
+    This function takes batch-indexed `vertices`, `vertex_colors`, `faces`, and `background`.
 
     It is conceptually equivalent to:
     ```python
     tf.stack([
-        rasterise(background_i, vertices_i, vertex_colors_i, faces)
-        for (background_i, vertices_i, vertex_colors_i) in zip(background, vertices, vertex_colors)
+        rasterise(background_i, vertices_i, vertex_colors_i, faces_i)
+        for (background_i, vertices_i, vertex_colors_i, faces_i)
+        in zip(background, vertices, vertex_colors, faces)
     ])
     ```
     See `rasterise` for definitions of the parameters, noting that for `rasterise_batch`, a leading dimension should be included.
