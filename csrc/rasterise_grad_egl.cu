@@ -185,8 +185,12 @@ __global__ void assemble_grads(
                     // ** perhaps best to do a loop, considering dilation from preferred orthogonal direction, then other, then diagonals, stopping
                     // ** if one results in a dilation (or, ideally, summing)
 
-                    auto const offset_direction = scharr_x.L1() > scharr_y.L1() ? int2{1, 0} : int2{0, 1};
-                    // ** it'd be sensible to randomise or dither the ordering (positive or negative first)
+                    auto offset_direction = scharr_x.L1() > scharr_y.L1() ? int2{1, 0} : int2{0, 1};
+                    if ((x_in_frame + y_in_frame) % 2 == 1) {
+                        // Dither the preferred direction of offset to reduce bias
+                        offset_direction.x = -offset_direction.x;
+                        offset_direction.y = -offset_direction.y;
+                    }
                     dilate_from_offset(offset_direction);
                     if (!dilated)
                         dilate_from_offset({-offset_direction.x, -offset_direction.y});
