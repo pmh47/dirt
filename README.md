@@ -166,6 +166,8 @@ Several other differentiable renderers have been described and released in recen
 
 - [tensorflow_mesh_renderer](https://github.com/ndrplz/tensorflow-mesh-renderer) (Palazzi et al., ECCV Workshops 2018) renders silhouettes using built-in TensorFlow ops, but does not support shading
 
+- [redner](https://github.com/BachiLi/redner) (Li et al., TOG 2018) is a differentiable path-tracer that can propagate gradients through indirect illumination, but which is much slower than methods like DIRT with only direct lighting
+
 
 ## Contributing
 
