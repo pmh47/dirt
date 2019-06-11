@@ -120,7 +120,7 @@ To sanity-check your build, run `python tests/square_test.py`, which should prod
 
 - In some cases, a segfault occurs when using legacy OpenGL libraries instead of GLVND; setting the cmake variable `OpenGL_GL_PREFERENCE=GLVND` may fix this
 
-- You should ensure that compute + graphics mode is enabled (through nvidia-smi) for your GPU
+- You should ensure that graphics operations are enabled for your GPU (ALL_ON operation mode set by `nvidia-smi --gom=0`) -- this is the default, and does not need changing in most cases
 
 
 ## Usage
