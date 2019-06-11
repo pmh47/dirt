@@ -47,7 +47,7 @@ def rodrigues(vectors, name=None):
             [vectors[..., 2], z, -vectors[..., 0]],
             [-vectors[..., 1], vectors[..., 0], z],
         ])  # indexed by x/y/z (in), x/y/z (out), *
-        K = tf.transpose(K, range(2, K.get_shape().ndims) + [0, 1])  # indexed by *, x/y/z (in), x/y/z (out)
+        K = tf.transpose(K, list(range(2, K.get_shape().ndims)) + [0, 1])  # indexed by *, x/y/z (in), x/y/z (out)
 
         c = tf.cos(norms)[..., tf.newaxis, tf.newaxis]
         s = tf.sin(norms)[..., tf.newaxis, tf.newaxis]

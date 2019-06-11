@@ -24,7 +24,7 @@ def _prepare_vertices_and_faces(vertices, faces):
 def _get_face_normals(vertices, faces):
 
     vertices_ndim = vertices.get_shape().ndims
-    vertices_by_index = tf.transpose(vertices, [vertices_ndim - 2] + range(vertices_ndim - 2) + [vertices_ndim - 1])  # indexed by vertex-index, *, x/y/z
+    vertices_by_index = tf.transpose(vertices, [vertices_ndim - 2] + list(range(vertices_ndim - 2)) + [vertices_ndim - 1])  # indexed by vertex-index, *, x/y/z
     vertices_by_face = tf.gather(vertices_by_index, faces)  # indexed by face-index, vertex-in-face, *, x/y/z
     normals_by_face = tf.cross(vertices_by_face[:, 1] - vertices_by_face[:, 0], vertices_by_face[:, 2] - vertices_by_face[:, 0])  # indexed by face-index, *, x/y/z
     normals_by_face /= (tf.norm(normals_by_face, axis=-1, keep_dims=True) + 1.e-12)  # ditto
@@ -88,7 +88,7 @@ def vertex_normals(vertices, faces, name=None):
         summed_normals_by_vertex = tf.sparse_reduce_sum(normals_by_face_and_vertex, axis=0)  # indexed by vertex-index, *, x/y/z
         renormalised_normals_by_vertex = summed_normals_by_vertex / (tf.norm(summed_normals_by_vertex, axis=-1, keep_dims=True) + 1.e-12)  # ditto
 
-        result = tf.transpose(renormalised_normals_by_vertex, range(1, vertices_ndim - 1) + [0, vertices_ndim - 1])
+        result = tf.transpose(renormalised_normals_by_vertex, list(range(1, vertices_ndim - 1)) + [0, vertices_ndim - 1])
         result.set_shape(vertices.get_shape())
         return result
 
@@ -119,7 +119,7 @@ def vertex_normals_pre_split(vertices, faces, name=None, static=False):
 
         normals_by_face, _ = _get_face_normals(vertices, faces)  # indexed by face-index, *, x/y/z
         normals_by_face_flat = tf.reshape(
-            tf.transpose(normals_by_face, range(1, normals_by_face.get_shape().ndims - 1) + [0, normals_by_face.get_shape().ndims - 1]),
+            tf.transpose(normals_by_face, list(range(1, normals_by_face.get_shape().ndims - 1)) + [0, normals_by_face.get_shape().ndims - 1]),
             [-1, face_count, 3]
         )  # indexed by prod(*), face-index, x/y/z
 

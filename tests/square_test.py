@@ -45,9 +45,9 @@ def main():
         dirt_pixels = get_dirt_pixels().eval()
 
         if np.all(non_dirt_pixels == dirt_pixels):
-            print 'successful: all pixels agree'
+            print('successful: all pixels agree')
         else:
-            print 'failed: {} pixels disagree'.format(np.sum(non_dirt_pixels != dirt_pixels))
+            print('failed: {} pixels disagree'.format(np.sum(non_dirt_pixels != dirt_pixels)))
 
 
 if __name__ == '__main__':

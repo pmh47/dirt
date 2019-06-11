@@ -26,7 +26,7 @@ class CmakeAndBuild(build_module.build):
 
 setup(
     name='dirt',
-    version='0.2.0',
+    version='0.3.0',
     description='DIRT: Differentiable Renderer for TensorFlow',
     long_description=long_description,
     author='Paul Henderson',
@@ -44,5 +44,9 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
     ]
 )

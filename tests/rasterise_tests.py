@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 import math
@@ -23,7 +23,7 @@ def make_cylinder(radius, height, end_offset, bevel, segments):
 
     faces = []
     def make_ring(start):
-        for quad_index in xrange(segments):
+        for quad_index in range(segments):
             upper_first = start + quad_index
             upper_second = start + (quad_index + 1) % segments
             lower_first = start + quad_index + segments
@@ -35,7 +35,7 @@ def make_cylinder(radius, height, end_offset, bevel, segments):
     make_ring(0)
     make_ring(segments)
     make_ring(segments * 2)
-    for top_first in xrange(segments):
+    for top_first in range(segments):
         top_second = (top_first + 1) % segments
         bottom_first = top_first + segments * 3
         bottom_second = (bottom_first + 1) % segments
@@ -85,7 +85,7 @@ def mesh():
     vertex_color = tf.placeholder(tf.float32, [3])
     vertex_colors = tf.concat([tf.tile(vertex_color[np.newaxis, :], [75, 1]), np.random.uniform(size=[vertex_count - 75, 3])], axis=0)
 
-    im = dirt.rasterise_ops.rasterise(tf.concat([tf.tile(bgcolor[np.newaxis, np.newaxis, :], [h / 2, w, 1]), tf.ones([h / 2, w, 3])], axis=0), projected_vertices, vertex_colors, faces, height=h, width=w, channels=3)
+    im = dirt.rasterise_ops.rasterise(tf.concat([tf.tile(bgcolor[np.newaxis, np.newaxis, :], [h // 2, w, 1]), tf.ones([h // 2, w, 3])], axis=0), projected_vertices, vertex_colors, faces, height=h, width=w, channels=3)
     ims = dirt.rasterise_ops.rasterise_batch(tf.tile(tf.constant([[0., 0., 0.], [0., 0., 1.]])[:, np.newaxis, np.newaxis, :], [1, h, w, 1]), tf.tile(projected_vertices[np.newaxis, ...], [2, 1, 1]), np.random.uniform(size=[2, vertex_count, 3]), tf.tile(faces[np.newaxis, ...], [2, 1, 1]), height=h, width=w, channels=3)
 
     d_loss_by_pixels = tf.placeholder(tf.float32, [h, w, 3])
@@ -105,31 +105,31 @@ def mesh():
         gb_im = np.empty([h, w, 3], dtype=np.float32)
         gc_im = np.empty([h, w, 3], dtype=np.float32)
 
-        for y in xrange(h):
-            for x in xrange(w):
-                for c in xrange(3):
+        for y in range(h):
+            for x in range(w):
+                for c in range(3):
                     pixel_indicator = np.zeros([h, w, 3], dtype=np.float32)
                     pixel_indicator[y, x, c] = 1
                     [[gx_im[y, x, c], gy_im[y, x, c], gz_im[y, x, c]], gr_im[y, x, c], [gb_im[y, x, c], _, _], [gc_im[y, x, c], _, _]] = \
                         session.run([gt, gr, gb, gc], {d_loss_by_pixels: pixel_indicator, translation: [0., 0., -0.25], rotation_xy: 0., bgcolor: [0.4, 0.2, 0.2], vertex_color: [0.7, 0.3, 0.6]})
-                print '.',
-            print
+                print('.', end='')
+            print()
 
         gsx_im = np.empty([2, h, w, 3], dtype=np.float32)
         gsy_im = np.empty([2, h, w, 3], dtype=np.float32)
         gsz_im = np.empty([2, h, w, 3], dtype=np.float32)
         gsr_im = np.empty([2, h, w, 3], dtype=np.float32)
 
-        for iib in xrange(2):
-            print iib + 1
-            for y in xrange(h):
-                for x in xrange(w):
-                    for c in xrange(3):
+        for iib in range(2):
+            print(iib + 1)
+            for y in range(h):
+                for x in range(w):
+                    for c in range(3):
                         pixel_indicator = np.zeros([2, h, w, 3], dtype=np.float32)
                         pixel_indicator[iib, y, x, c] = 1
                         [[gsx_im[iib, y, x, c], gsy_im[iib, y, x, c], gsz_im[iib, y, x, c]], gsr_im[iib, y, x, c]] = session.run([gst, gsr], {ds_loss_by_pixels: pixel_indicator, translation: [0., 0., -1.], rotation_xy: 0.5})
-                    print '.',
-                print
+                    print('.', end='')
+                print()
 
         cv2.imshow('im', im.eval({translation: [0., 0., -0.25], rotation_xy: 0., bgcolor: [0.6, 0.2, 0.2], vertex_color: [0.7, 0.3, 0.6]}))
         cv2.imshow('ims', np.concatenate(ims.eval({translation: [0., 0., -0.25], rotation_xy: 0.5}), axis=1))
