@@ -26,6 +26,14 @@ find_library(Tensorflow_LIBRARY tensorflow_framework HINTS ${Tensorflow_LIB_DIR}
 include_directories(SYSTEM ../external/tensorflow ${NSYNC_INCLUDE_DIR} ${CUDA_INCLUDE_DIR} ${EGL_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
 include_directories(${Tensorflow_INCLUDE_DIRS} ${Tensorflow_INCLUDE_DIRS}/external/nsync/public)
 
+# Override g++ ABI version if needed. Official Tensorflow packages used to be built with gcc 4.x, hence use the C++03 ABI; most
+# users have a recent version of gcc that defaults to the C++11 ABI, and therefore requires -D_GLIBCXX_USE_CXX11_ABI=0
+execute_process(COMMAND python -c "import tensorflow; print(tensorflow.COMPILER_VERSION)" OUTPUT_VARIABLE tensorflow_compiler_version OUTPUT_STRIP_TRAILING_WHITESPACE)
+string(SUBSTRING "${tensorflow_compiler_version}" 0 1 tensorflow_compiler_major_version)
+if(${tensorflow_compiler_major_version} LESS 5)
+  add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+endif()
+
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math")
 
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30 --expt-relaxed-constexpr")
