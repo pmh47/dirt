@@ -103,6 +103,32 @@ pip install -e .
 
 To sanity-check your build, run `python tests/square_test.py`, which should produce the output `successful: all pixels agree`.
 
+#### Docker
+
+- Install [docker](http://docker.com)
+- Install [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)
+- Configure the docker daemon to use the nvidia runtime
+	- ```sudo vi /etc/docker/daemon.json```
+	- Add "default-runtime": "nvidia" as the first entry in the JSON file
+	- Run ```sudo service docker restart``` to restart the docker daemon
+- Example setup:
+
+```
+# clone dirt
+git clone https://github.com/pmh47/dirt.git && cd dirt
+
+# build the image
+export CUDA_BASE_VERSION=9.0
+export UBUNTU_VERSION=16.04
+export CUDNN_VERSION=7.6.0.64
+docker build -t <image_name> --build-arg CUDA_BASE_VERSION=$(echo $CUDA_BASE_VERSION) \
+	--build-arg UBUNTU_VERSION=$(echo $UBUNTU_VERSION) \
+	--build-arg CUDNN_VERSION=$(echo $CUDNN_VERSION) .
+
+# run the container and open a bash shell
+sudo docker run --runtime=nvidia <image_name> /bin/bash
+```
+
 #### Troubleshooting:
 
 - If the build cannot find `GL/gl.h` and `GL/glext.h`, you can get suitable versions of these by running the following from the `dirt` directory:
