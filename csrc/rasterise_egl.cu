@@ -3,12 +3,7 @@
 #define EIGEN_USE_GPU
 
 #include <tensorflow/core/framework/tensor.h>
-#include <tensorflow/core/util/cuda_kernel_helper.h>
-
-// If tensorflow is too old, this does not exist; if tensorflow is too new, it has an incompatible definition
-#define CUDA_AXIS_KERNEL_LOOP(i, n, axis)                                  \
-  for (int i = blockIdx.axis * blockDim.axis + threadIdx.axis; i < n.axis; \
-       i += blockDim.axis * gridDim.axis)
+#include "tf_cuda_utils.h"
 
 using namespace tensorflow;
 

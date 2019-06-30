@@ -16,11 +16,17 @@ find_path(CUDA_INCLUDE_DIR NAMES cuda/include/cuda.h HINTS ${NVCC_DIR}/../.. PAT
 execute_process(COMMAND python -c "import tensorflow; print(tensorflow.sysconfig.get_include())" OUTPUT_VARIABLE Tensorflow_default_INCLUDE_DIRS OUTPUT_STRIP_TRAILING_WHITESPACE)
 set(Tensorflow_INCLUDE_DIRS "${Tensorflow_default_INCLUDE_DIRS}" CACHE PATH "Tensorflow include path")
 
-# Ask tensorflow for its library path
-# If using tensorflow earlier than v1.4, this will not work, but can be skipped entirely
-execute_process(COMMAND python -c "import tensorflow; print(tensorflow.sysconfig.get_lib())" OUTPUT_VARIABLE Tensorflow_default_LIB_DIR OUTPUT_STRIP_TRAILING_WHITESPACE)
-set(Tensorflow_LIB_DIR "${Tensorflow_default_LIB_DIR}" CACHE PATH "Tensorflow library path")
-find_library(Tensorflow_LIBRARY tensorflow_framework HINTS ${Tensorflow_LIB_DIR} REQUIRED DOC "Tensorflow framework library; for tensorflow < 1.4, you can set this to blank")
+if(NOT EXISTS "${Tensorflow_INCLUDE_DIRS}/tensorflow/core/util/cuda_launch_config.h")
+  if(EXISTS "${Tensorflow_INCLUDE_DIRS}/tensorflow/core/util/gpu_launch_config.h")
+    add_definitions(-DUSE_GPU_LAUNCH_CONFIG_H)
+  else()
+    message(FATAL_ERROR "cannot find either cuda_launch_config.h or gpu_launch_config.h")
+  endif()
+endif()
+
+# Ask tensorflow for the necessary linker flags
+execute_process(COMMAND python -c "import tensorflow; print(' '.join(tensorflow.sysconfig.get_link_flags()))" OUTPUT_VARIABLE Tensorflow_DEFAULT_LINK_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+set(Tensorflow_LINK_FLAGS "${Tensorflow_DEFAULT_LINK_FLAGS}" CACHE STRING "Tensorflow linker flags for custom ops")
 
 # in the following, we need ../external/tensorflow for cuda_config.h in tf versions with #16959 unfixed
 include_directories(SYSTEM ../external/tensorflow ${NSYNC_INCLUDE_DIR} ${CUDA_INCLUDE_DIR} ${EGL_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
@@ -43,11 +49,11 @@ add_library(
     rasterise_egl.cpp rasterise_egl.cu
     rasterise_grad_egl.cpp rasterise_grad_egl.cu rasterise_grad_common.h
     shaders.cpp shaders.h
-    gl_dispatcher.h concurrentqueue.h blockingconcurrentqueue.h gl_common.h hwc.h
+    gl_dispatcher.h concurrentqueue.h blockingconcurrentqueue.h gl_common.h tf_cuda_utils.h hwc.h
 )
 
 target_compile_features(rasterise PUBLIC cxx_std_11)
-target_link_libraries(rasterise ${EGL_LIBRARIES} ${OPENGL_LIBRARIES} ${Tensorflow_LIBRARY})
+target_link_libraries(rasterise ${EGL_LIBRARIES} ${OPENGL_LIBRARIES} ${Tensorflow_LINK_FLAGS})
 
 # Put the compiled library in the python package folder, rather than whatever build folder is being used
 set_target_properties(

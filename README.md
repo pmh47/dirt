@@ -74,7 +74,7 @@ pixels = dirt.rasterise(
 
 - an Nvidia GPU; the earliest drivers we have tested with are v367
 - Linux; we have only tested on Ubuntu, but other distributions should work
-- a GPU-enabled install of TensorFlow, version 1.4 or later recommended
+- a GPU-enabled install of TensorFlow, version 1.6 or later
 - python 2.7.9 / 3.5 or newer
 - cmake 3.8 or newer
 - gcc 4.9 or newer

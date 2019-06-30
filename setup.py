@@ -34,7 +34,7 @@ setup(
     url='https://github.com/pmh47/dirt',
     packages=['dirt'],
     python_requires='>=2.7.0',
-    install_requires=['tensorflow-gpu>=1.4', 'numpy'],
+    install_requires=['tensorflow-gpu>=1.6', 'numpy'],
     package_data={'dirt': ['*.so', '*.dll']},
     include_package_data=True,
     cmdclass={'build': CmakeAndBuild},
