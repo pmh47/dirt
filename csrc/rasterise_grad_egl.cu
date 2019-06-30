@@ -53,13 +53,7 @@ void launch_vertex_upload(
     );
 }
 
-__global__ void assemble_grads(
-    TTypes<float, 3>::Tensor grad_vertices, TTypes<float, 3>::Tensor grad_vertex_colors, TTypes<float, 4>::Tensor grad_background, TTypes<float, 4>::Tensor debug_thingy,
-    cudaSurfaceObject_t const barycentrics_and_depth_surface, cudaSurfaceObject_t const indices_surface,
-    TTypes<float, 4>::ConstTensor const pixels, TTypes<float, 4>::ConstTensor const grad_pixels, TTypes<float, 3>::ConstTensor const vertices,
-    int const frames_per_row,
-    dim3 const total_threads
-) {
+namespace {
     struct Vec3 {
         float x, y, z;
 
@@ -99,7 +93,15 @@ __global__ void assemble_grads(
             return x != other.x || y != other.y || z != other.z;
         }
     };
+}
 
+__global__ void assemble_grads(
+    TTypes<float, 3>::Tensor grad_vertices, TTypes<float, 3>::Tensor grad_vertex_colors, TTypes<float, 4>::Tensor grad_background, TTypes<float, 4>::Tensor debug_thingy,
+    cudaSurfaceObject_t const barycentrics_and_depth_surface, cudaSurfaceObject_t const indices_surface,
+    TTypes<float, 4>::ConstTensor const pixels, TTypes<float, 4>::ConstTensor const grad_pixels, TTypes<float, 3>::ConstTensor const vertices,
+    int const frames_per_row,
+    dim3 const total_threads
+) {
     auto const batch_size = static_cast<int>(grad_pixels.dimension(0));
     auto const frame_height = static_cast<int>(grad_pixels.dimension(1));
     auto const frame_width = static_cast<int>(grad_pixels.dimension(2));
