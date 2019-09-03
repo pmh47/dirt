@@ -152,7 +152,9 @@ sudo docker run --runtime=nvidia <image_name> /bin/bash
 
 - If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`
 
-- If you see an error `cudaGraphicsGLRegisterImage failed: cudaErrorNotSupported`, this may be due to insufficient GPU memory. Note that DIRT allocates some memory through OpenGL outside of TensorFlow's allocator, so it may be necessary to reduce the memory reserved by TensorFlow
+- If you see an error `cudaGraphicsGLRegisterImage failed: cudaErrorNotSupported`, this may be due to insufficient GPU memory. Note that DIRT allocates some memory through OpenGL outside of TensorFlow's allocator, so it may be necessary to reduce the memory reserved by TensorFlow (e.g. by using `allow_growth=True` in the session config)
+
+- If you see an error `Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR` when initialising cudnn after DIRT, this may again be due to insufficient GPU memory (see previous point).
 
 
 ## Usage
