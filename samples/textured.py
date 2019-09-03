@@ -2,7 +2,6 @@
 # This demonstrates using Dirt for textured rendering with a UV map
 
 import os
-import imageio
 import numpy as np
 import tensorflow as tf
 
@@ -12,10 +11,6 @@ import dirt.lighting as lighting
 
 
 frame_width, frame_height = 640, 480
-
-
-def unit(vector):
-    return tf.convert_to_tensor(vector) / tf.norm(vector)
 
 
 def uvs_to_pixel_indices(uvs, texture_shape, mode='repeat'):
@@ -81,7 +76,7 @@ def main():
     add_quad(vertices=[[-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]], uvs=[[0.1, 0.9], [0.9, 0.9], [0.9, 0.1], [0.1, 0.1]])  # front
     add_quad(vertices=[[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1]], uvs=[[1, 1], [0, 1], [0, 0], [1, 0]])  # back
 
-    add_quad(vertices=[[1, 1, 1], [1, 1, -1], [1, -1, -1], [1, -1, 1]], uvs=[[0.4, 0.35], [0.5, 0.35], [0.5, 0.45], [0.4, 0.45]])  # right
+    add_quad(vertices=[[1, 1, 1], [1, 1, -1], [1, -1, -1], [1, -1, 1]], uvs=[[0.3, 0.25], [0.6, 0.25], [0.6, 0.55], [0.3, 0.55]])  # right
     add_quad(vertices=[[-1, 1, 1], [-1, 1, -1], [-1, -1, -1], [-1, -1, 1]], uvs=[[0.4, 0.4], [0.5, 0.4], [0.5, 0.5], [0.4, 0.5]])  # left
 
     add_quad(vertices=[[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]], uvs=[[0, 0], [2, 0], [2, 2], [0, 2]])  # top
@@ -91,7 +86,7 @@ def main():
     cube_uvs = np.asarray(cube_uvs, np.float32)
 
     # Load the texture image
-    texture = tf.constant(imageio.imread(os.path.dirname(__file__) + '/cat.jpg'), dtype=tf.float32) / 255.
+    texture = tf.cast(tf.image.decode_jpeg(tf.read_file(os.path.dirname(__file__) + '/cat.jpg')), tf.float32) / 255.
 
     # Convert vertices to homogeneous coordinates
     cube_vertices_object = tf.concat([
@@ -116,60 +111,61 @@ def main():
     projection_matrix = matrices.perspective_projection(near=0.1, far=20., right=0.1, aspect=float(frame_height) / frame_width)
     cube_vertices_clip = tf.matmul(cube_vertices_camera, projection_matrix)
 
-    # Render the G-buffer channels (mask, UVs, and normals at each pixel) needed for deferred shading
-    gbuffer_mask = dirt.rasterise(
+    # The following function is applied to the G-buffer, which is a multi-channel image containing all the vertex attributes. It
+    # uses this to calculate the shading (texture and lighting) at each pixel, hence their final intensities
+    def shader_fn(gbuffer, texture, light_direction):
+
+        # Unpack the different attributes from the G-buffer
+        mask = gbuffer[:, :, :1]
+        uvs = gbuffer[:, :, 1:3]
+        normals = gbuffer[:, :, 3:]
+
+        # Sample the texture at locations corresponding to each pixel; this defines the unlit material color at each point
+        unlit_colors = sample_texture(texture, uvs_to_pixel_indices(uvs, tf.shape(texture)[:2]))
+
+        # Calculate a simple grey ambient lighting component
+        ambient_contribution = unlit_colors * [0.4, 0.4, 0.4]
+
+        # Calculate a diffuse (Lambertian) lighting component
+        diffuse_contribution = lighting.diffuse_directional(
+            tf.reshape(normals, [-1, 3]),
+            tf.reshape(unlit_colors, [-1, 3]),
+            light_direction, light_color=[0.6, 0.6, 0.6], double_sided=True
+        )
+        diffuse_contribution = tf.reshape(diffuse_contribution, [frame_height, frame_width, 3])
+
+        # The final pixel intensities inside the shape are given by combining the ambient and diffuse components;
+        # outside the shape, they are set to a uniform background color
+        pixels = (diffuse_contribution + ambient_contribution) * mask + [0., 0., 0.3] * (1. - mask)
+
+        return pixels
+    
+    # Render the G-buffer channels (mask, UVs, and normals at each pixel), then perform the deferred shading calculation
+    # In general, any tensor required by shader_fn and wrt which we need derivatives should be included in shader_additional_inputs;
+    # although in this example they are constant, we pass the texture and lighting direction through this route as an illustration
+    light_direction = tf.linalg.l2_normalize([1., -0.3, -0.5])
+    pixels = dirt.rasterise_deferred(
         vertices=cube_vertices_clip,
+        vertex_attributes=tf.concat([
+            tf.ones_like(cube_vertices_object[:, :1]),  # mask
+            cube_uvs,  # texture coordinates
+            cube_normals_world  # normals
+        ], axis=1),
         faces=cube_faces,
-        vertex_colors=tf.ones_like(cube_vertices_object[:, :1]),
-        background=tf.zeros([frame_height, frame_width, 1]),
-        width=frame_width, height=frame_height, channels=1
-    )[..., 0]
-    background_value = -1.e4
-    gbuffer_vertex_uvs = dirt.rasterise(
-        vertices=cube_vertices_clip,
-        faces=cube_faces,
-        vertex_colors=tf.concat([cube_uvs, tf.zeros_like(cube_uvs[:, :1])], axis=1),
-        background=tf.ones([frame_height, frame_width, 3]) * background_value,
-        width=frame_width, height=frame_height, channels=3
-    )[..., :2]
-    gbuffer_vertex_normals_world = dirt.rasterise(
-        vertices=cube_vertices_clip,
-        faces=cube_faces,
-        vertex_colors=cube_normals_world,
-        background=tf.ones([frame_height, frame_width, 3]) * background_value,
-        width=frame_width, height=frame_height, channels=3
+        background_attributes=tf.zeros([frame_height, frame_width, 6]),
+        shader_fn=shader_fn,
+        shader_additional_inputs=[texture, light_direction]
     )
 
-    # Dilate the normals and UVs to ensure correct gradients on the silhouette
-    gbuffer_mask = gbuffer_mask[:, :, None]
-    gbuffer_vertex_normals_world_dilated = tf.nn.max_pool(gbuffer_vertex_normals_world[None, ...], ksize=[1, 3, 3, 1], strides=[1, 1, 1, 1], padding='SAME')[0]
-    gbuffer_vertex_normals_world = gbuffer_vertex_normals_world * gbuffer_mask + gbuffer_vertex_normals_world_dilated * (1. - gbuffer_mask)
-    gbuffer_vertex_uvs_dilated = tf.nn.max_pool(gbuffer_vertex_uvs[None, ...], ksize=[1, 3, 3, 1], strides=[1, 1, 1, 1], padding='SAME')[0]
-    gbuffer_vertex_uvs = gbuffer_vertex_uvs * gbuffer_mask + gbuffer_vertex_uvs_dilated * (1. - gbuffer_mask)
-
-    # Calculate the colour buffer, by sampling the texture according to the rasterised UVs
-    gbuffer_colours = gbuffer_mask * sample_texture(texture, uvs_to_pixel_indices(gbuffer_vertex_uvs, tf.shape(texture)[:2]))
-
-    # Calculate a simple grey ambient lighting component
-    ambient_contribution = gbuffer_colours * [0.4, 0.4, 0.4]
-
-    # Calculate a diffuse (Lambertian) lighting component
-    light_direction = unit([1., -0.3, -0.5])
-    diffuse_contribution = lighting.diffuse_directional(
-        tf.reshape(gbuffer_vertex_normals_world, [-1, 3]),
-        tf.reshape(gbuffer_colours, [-1, 3]),
-        light_direction, light_color=[0.6, 0.6, 0.6], double_sided=True
+    save_pixels = tf.write_file(
+        'textured.jpg',
+        tf.image.encode_jpeg(tf.cast(pixels * 255, tf.uint8))
     )
-    diffuse_contribution = tf.reshape(diffuse_contribution, [frame_height, frame_width, 3])
-
-    # Final pixels are given by combining the ambient and diffuse components
-    pixels = diffuse_contribution + ambient_contribution
 
     session = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
     with session.as_default():
 
-        pixels_eval = pixels.eval()
-        imageio.imsave('textured.jpg', (pixels_eval * 255).astype(np.uint8))
+        save_pixels.run()
 
 
 if __name__ == '__main__':

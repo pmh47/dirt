@@ -2,7 +2,6 @@
 # This demonstrates using Dirt for deferred shading, which allows per-pixel lighting
 
 import tensorflow as tf
-import cv2  # OpenCV, used only to display the result
 
 import dirt
 import dirt.matrices as matrices
@@ -21,10 +20,6 @@ def build_cube():
     ]
     triangles = sum([[[a, b, c], [c, d, a]] for [a, b, c, d] in quads], [])
     return vertices, triangles
-
-
-def unit(vector):
-    return tf.convert_to_tensor(vector) / tf.norm(vector)
 
 
 def main():
@@ -59,70 +54,77 @@ def main():
     projection_matrix = matrices.perspective_projection(near=0.1, far=20., right=0.1, aspect=float(frame_height) / frame_width)
     cube_vertices_clip = tf.matmul(cube_vertices_camera, projection_matrix)
 
-    # Render the G-buffer channels (vertex position, colour and normal at each pixel) needed for deferred shading
-    gbuffer_vertex_positions_world = dirt.rasterise(
+    # The following function is applied to the G-buffer, which is a multi-channel image containing all the vertex attributes.
+    # It uses this to calculate the shading at each pixel, hence their final intensities
+    def shader_fn(gbuffer, view_matrix, light_direction):
+
+        # Unpack the different attributes from the G-buffer
+        mask = gbuffer[:, :, :1]
+        positions = gbuffer[:, :, 1:4]
+        unlit_colors = gbuffer[:, :, 4:7]
+        normals = gbuffer[:, :, 7:]
+
+        # Calculate a simple grey ambient lighting component
+        ambient_contribution = unlit_colors * [0.2, 0.2, 0.2]
+
+        # Calculate a red diffuse (Lambertian) lighting component
+        diffuse_contribution = lighting.diffuse_directional(
+            tf.reshape(normals, [-1, 3]),
+            tf.reshape(unlit_colors, [-1, 3]),
+            light_direction, light_color=[1., 0., 0.], double_sided=False
+        )
+        diffuse_contribution = tf.reshape(diffuse_contribution, [frame_height, frame_width, 3])
+
+        # Calculate a white specular (Phong) lighting component
+        camera_position_world = tf.matrix_inverse(view_matrix)[3, :3]
+        specular_contribution = lighting.specular_directional(
+            tf.reshape(positions, [-1, 3]),
+            tf.reshape(normals, [-1, 3]),
+            tf.reshape(unlit_colors, [-1, 3]),
+            light_direction, light_color=[1., 1., 1.],
+            camera_position=camera_position_world,
+            shininess=6., double_sided=False
+        )
+        specular_contribution = tf.reshape(specular_contribution, [frame_height, frame_width, 3])
+
+        # The final pixel intensities inside the shape are given by combining the three lighting components;
+        # outside the shape, they are set to a uniform background color. We clip the final values as the specular
+        # component saturates some pixels
+        pixels = tf.clip_by_value(
+            (diffuse_contribution + specular_contribution + ambient_contribution) * mask + [0., 0., 0.3] * (1. - mask),
+            0., 1.
+        )
+
+        return pixels
+
+    # Render the G-buffer channels (mask, vertex positions, vertex colours, and normals at each pixel), then perform
+    # the deferred shading calculation. In general, any tensor required by shader_fn and wrt which we need derivatives
+    # should be included in shader_additional_inputs; although in this example they are constant, we pass the view
+    # matrix and lighting direction through this route as an illustration
+    light_direction = tf.linalg.l2_normalize([1., -0.3, -0.5])
+    pixels = dirt.rasterise_deferred(
         vertices=cube_vertices_clip,
+        vertex_attributes=tf.concat([
+            tf.ones_like(cube_vertices_object[:, :1]),  # mask
+            cube_vertices_world[:, :3],  # vertex positions
+            cube_vertex_colors,  # vertex colors
+            cube_normals_world  # normals
+        ], axis=1),
         faces=cube_faces,
-        vertex_colors=cube_vertices_world[:, :3],
-        background=tf.ones([frame_height, frame_width, 3]) * float('-inf'),
-        width=frame_width, height=frame_height, channels=3
-    )
-    gbuffer_vertex_colours_world = dirt.rasterise(
-        vertices=cube_vertices_clip,
-        faces=cube_faces,
-        vertex_colors=cube_vertex_colors,
-        background=tf.zeros([frame_height, frame_width, 3]),
-        width=frame_width, height=frame_height, channels=3
-    )
-    gbuffer_vertex_normals_world = dirt.rasterise(
-        vertices=cube_vertices_clip,
-        faces=cube_faces,
-        vertex_colors=cube_normals_world,
-        background=tf.ones([frame_height, frame_width, 3]) * float('-inf'),
-        width=frame_width, height=frame_height, channels=3
+        background_attributes=tf.zeros([frame_height, frame_width, 10]),
+        shader_fn=shader_fn,
+        shader_additional_inputs=[view_matrix, light_direction]
     )
 
-    # Dilate the position and normal channels at the silhouette boundary; this doesn't affect the image, but
-    # ensures correct gradients for pixels just outside the silhouette
-    background_mask = tf.cast(tf.equal(gbuffer_vertex_positions_world, float('-inf')), tf.float32)
-    gbuffer_vertex_positions_world_dilated = tf.nn.max_pool(gbuffer_vertex_positions_world[None, ...], ksize=[1, 3, 3, 1], strides=[1, 1, 1, 1], padding='SAME')[0]
-    gbuffer_vertex_positions_world = gbuffer_vertex_positions_world * (1. - background_mask) + gbuffer_vertex_positions_world_dilated * background_mask
-    gbuffer_vertex_normals_world_dilated = tf.nn.max_pool(gbuffer_vertex_normals_world[None, ...], ksize=[1, 3, 3, 1], strides=[1, 1, 1, 1], padding='SAME')[0]
-    gbuffer_vertex_normals_world = gbuffer_vertex_normals_world * (1. - background_mask) + gbuffer_vertex_normals_world_dilated * background_mask
-
-    # Calculate a simple grey ambient lighting component
-    ambient_contribution = gbuffer_vertex_colours_world * [0.2, 0.2, 0.2]
-
-    # Calculate a red diffuse (Lambertian) lighting component
-    light_direction = unit([1., -0.3, -0.5])
-    diffuse_contribution = lighting.diffuse_directional(
-        tf.reshape(gbuffer_vertex_normals_world, [-1, 3]),
-        tf.reshape(gbuffer_vertex_colours_world, [-1, 3]),
-        light_direction, light_color=[1., 0., 0.], double_sided=False
+    save_pixels = tf.write_file(
+        'deferred.jpg',
+        tf.image.encode_jpeg(tf.cast(pixels * 255, tf.uint8))
     )
-    diffuse_contribution = tf.reshape(diffuse_contribution, [frame_height, frame_width, 3])
 
-    # Calculate a white specular (Phong) lighting component
-    camera_position_world = tf.matrix_inverse(view_matrix)[3, :3]
-    specular_contribution = lighting.specular_directional(
-        tf.reshape(gbuffer_vertex_positions_world, [-1, 3]),
-        tf.reshape(gbuffer_vertex_normals_world, [-1, 3]),
-        tf.reshape(gbuffer_vertex_colours_world, [-1, 3]),
-        light_direction, light_color=[1., 1., 1.],
-        camera_position=camera_position_world,
-        shininess=6., double_sided=False
-    )
-    specular_contribution = tf.reshape(specular_contribution, [frame_height, frame_width, 3])
-
-    # Final pixels are given by combining ambient, diffuse, and specular components
-    pixels = diffuse_contribution + specular_contribution + ambient_contribution
-
-    session = tf.Session()
+    session = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
     with session.as_default():
 
-        pixels_eval = pixels.eval()
-        cv2.imshow('deferred.py', pixels_eval[:, :, (2, 1, 0)])
-        cv2.waitKey(0)
+        save_pixels.run()
 
 
 if __name__ == '__main__':
