@@ -6,10 +6,22 @@ It supports computing derivatives through geometry, lighting, and other paramete
 DIRT is very fast: it uses OpenGL for rasterisation, running on the GPU, which allows
 lightweight interoperation with CUDA.
 
+The following images illustrate the capabilities of DIRT; see
+[`samples`](https://github.com/pmh47/dirt/tree/master/samples) for source
+code. The first uses simple monochromatic diffuse lighting calculated per-vertex and
+interpolated with Gouraud shading; the others use per-pixel (deferred) lighting and
+texture calculations.
+
+In all cases, we can calculate gradients with respect to all inputs, including the geometry
+(vertex locations and normals), lighting parameters (e.g. colour and direction), and texture
+(the vertex UVs and the pixel values in the texture itself).
+
+![Three sample renderings](example_renderings.jpg "Three sample renderings")
+
 
 ## Citation
 
-If you use DIRT in your research, you should cite: *Learning to Generate and Reconstruct 3D Meshes with only 2D Supervision* (P. Henderson and V. Ferrari, BMVC 2018).
+If you use DIRT in your research, please cite: *Learning to Generate and Reconstruct 3D Meshes with only 2D Supervision* (P. Henderson and V. Ferrari, BMVC 2018).
 
 The appropriate bibtex entry is:
 ```
