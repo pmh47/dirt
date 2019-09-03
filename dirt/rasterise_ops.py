@@ -1,5 +1,4 @@
 import os
-import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
@@ -13,7 +12,8 @@ def rasterise(background, vertices, vertex_colors, faces, height=None, width=Non
     This function takes a set of vertices, vertex colors, faces (vertex indices), and a background.
     It returns a single image, containing the faces these arrays, over the given background.
 
-    It supports single-channel (grayscale) or three-channel (RGB) rendering.
+    It supports single-channel (grayscale) or three-channel (RGB) image rendering, or arbitrary
+    numbers of channels for g-buffer rendering in a deferred shading pipeline (see `rasterise_deferred`).
 
     The vertices are specified in OpenGL's clip space, and as such are 4D homogeneous coordinates.
     This allows both 3D and 2D shapes to be rendered, by applying suitable projection matrices to the
@@ -41,17 +41,7 @@ def rasterise(background, vertices, vertex_colors, faces, height=None, width=Non
         vertices = tf.convert_to_tensor(vertices, name='vertices', dtype=tf.float32)
         vertex_colors = tf.convert_to_tensor(vertex_colors, name='vertex_colors', dtype=tf.float32)
         faces = tf.convert_to_tensor(faces, name='faces', dtype=tf.int32)
-        if height is None:
-            height = int(background.get_shape()[0])
-        if width is None:
-            width = int(background.get_shape()[1])
-        if channels is None:
-            channels = int(background.get_shape()[2])
-        return _rasterise_module.rasterise(
-            background[np.newaxis, ...], vertices[np.newaxis, ...], vertex_colors[np.newaxis, ...], faces[np.newaxis, ...],  # inputs
-            height, width, channels,  # attributes
-            name=scope
-        )[0]
+        return rasterise_batch(background[None], vertices[None], vertex_colors[None], faces[None], height, width, channels, name)[0]
 
 
 def rasterise_batch(background, vertices, vertex_colors, faces, height=None, width=None, channels=None, name=None):
@@ -75,17 +65,43 @@ def rasterise_batch(background, vertices, vertex_colors, faces, height=None, wid
         vertices = tf.convert_to_tensor(vertices, name='vertices', dtype=tf.float32)
         vertex_colors = tf.convert_to_tensor(vertex_colors, name='vertex_colors', dtype=tf.float32)
         faces = tf.convert_to_tensor(faces, name='faces', dtype=tf.int32)
+
         if height is None:
             height = int(background.get_shape()[1])
         if width is None:
             width = int(background.get_shape()[2])
         if channels is None:
             channels = int(background.get_shape()[3])
-        return _rasterise_module.rasterise(
-            background, vertices, vertex_colors, faces,  # inputs
-            height, width, channels,  # attributes
-            name=scope
-        )
+
+        if channels == 1 or channels == 3:
+            return _rasterise_module.rasterise(
+                background, vertices, vertex_colors, faces,  # inputs
+                height, width, channels,  # attributes
+                name=scope
+            )
+        else:
+            assert channels > 0
+            pixels = []
+            begin_channel = 0
+            while begin_channel < channels:
+                if begin_channel + 3 <= channels:
+                    end_channel = begin_channel + 3
+                else:
+                    # in the mod-2 case, could just do a 3-channel pass (instead of two 1-channel passes), concating zeros to the background and attributes, then indexing them off the pixels
+                    end_channel = begin_channel + 1
+                with ops.name_scope('channels_{}_to_{}'.format(begin_channel, end_channel)) as channel_group_scope:
+                    pixels.append(
+                        _rasterise_module.rasterise(
+                            background[..., begin_channel : end_channel],
+                            vertices,
+                            vertex_colors[..., begin_channel : end_channel],
+                            faces,
+                            height, width, end_channel - begin_channel,
+                            name=channel_group_scope
+                        )
+                    )
+                begin_channel = end_channel
+            return tf.concat(pixels, axis=-1)
 
 
 @ops.RegisterGradient('Rasterise')
