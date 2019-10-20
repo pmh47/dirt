@@ -21,18 +21,21 @@ In all cases, we can calculate gradients with respect to all inputs, including t
 
 ## Citation
 
-If you use DIRT in your research, please cite: *Learning to Generate and Reconstruct 3D Meshes with only 2D Supervision* (P. Henderson and V. Ferrari, BMVC 2018).
+If you use DIRT in your research, please cite: [*Learning Single-Image 3D Reconstruction by Generative Modelling of Shape, Pose and Shading*](https://doi.org/10.1007/s11263-019-01219-8) (P. Henderson and V. Ferrari, IJCV 2019).
 
 The appropriate bibtex entry is:
 ```
-@inproceedings{henderson18bmvc,
-  title={Learning to Generate and Reconstruct 3D Meshes with only 2D Supervision},
+@article{henderson19ijcv,
+  title={Learning Single-Image {3D} Reconstruction by Generative Modelling of Shape, Pose and Shading},
   author={Paul Henderson and Vittorio Ferrari},
-  booktitle={British Machine Vision Conference (BMVC)},
-  year={2018}
+  journal={International Journal of Computer Vision},
+  year={2019},
+  doi={10.1007/s11263-019-01219-8},
+  url={https://doi.org/10.1007/s11263-019-01219-8}
 }
 ```
 
+There is a brief description of how DIRT calculates gradients in Section 3.4 of my [PhD thesis](http://calvin.inf.ed.ac.uk/wp-content/uploads/Publications/theses/Henderson2019.pdf), for the case of per-face Lambertian shading without textures.
 
 ## Why is DIRT useful?
 
