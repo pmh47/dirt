@@ -95,7 +95,7 @@ def vertex_normals(vertices, faces, name=None):
 
 def _static_map_fn(f, elements):
     assert elements.get_shape()[0].value is not None
-    return tf.stack([f(elements[index]) for index in xrange(int(elements.get_shape()[0]))])
+    return tf.stack([f(elements[index]) for index in range(int(elements.get_shape()[0]))])
 
 
 def vertex_normals_pre_split(vertices, faces, name=None, static=False):
