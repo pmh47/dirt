@@ -163,8 +163,6 @@ sudo docker run --runtime=nvidia <image_name> /bin/bash
 
 - If you are using TensorFlow 1.14, there are some binary compatibility issues when using older versions of python (e.g. 2.7 and 3.5), due to compiler version mismatches. These result in a segfault at `tensorflow::shape_inference::InferenceContext::GetAttr` or similar. To resolve, either upgrade python to 3.7, or downgrade TensorFlow to 1.13, or build DIRT with gcc 4.8
 
-- In some cases, a segfault occurs when using legacy OpenGL libraries instead of GLVND; setting the cmake variable `OpenGL_GL_PREFERENCE=GLVND` may fix this
-
 - You should ensure that graphics operations are enabled for your GPU (ALL_ON operation mode set by `nvidia-smi --gom=0`) -- this is the default, and does not need changing in most cases
 
 - If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`

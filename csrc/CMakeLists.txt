@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.8)  # 3.8 gives us built-in CUDA support
+cmake_minimum_required(VERSION 3.10)  # 3.8 gives us built-in CUDA support; 3.10 gives us OpenGL::EGL
 
 project(dirt LANGUAGES CXX CUDA)
 
-find_package(OpenGL REQUIRED)
+find_package(OpenGL REQUIRED COMPONENTS OpenGL EGL)
 
 # Search for EGL; nvidia drivers ship the library but not headers, so we redistribute those
 find_path(EGL_INCLUDE_DIR NAMES EGL/egl.h PATHS ${CMAKE_CURRENT_SOURCE_DIR}/../external REQUIRED)
@@ -49,7 +49,7 @@ add_library(
 
 target_compile_features(rasterise PUBLIC cxx_std_11)
 target_compile_options(rasterise PUBLIC ${Tensorflow_COMPILE_FLAGS})
-target_link_libraries(rasterise ${EGL_LIBRARIES} ${OPENGL_LIBRARIES} ${Tensorflow_LINK_FLAGS})
+target_link_libraries(rasterise OpenGL::EGL OpenGL::OpenGL ${Tensorflow_LINK_FLAGS})
 
 # Put the compiled library in the python package folder, rather than whatever build folder is being used
 set_target_properties(
