@@ -83,6 +83,25 @@ def translation(x, name=None):
         ], axis=-2)  # indexed by *, x/y/z/w (in), x/y/z/w (out)
 
 
+def scale(x, name=None):
+    """Constructs a batch of scaling matrices.
+
+    This function returns a batch of scaling matrices, from a corresponding batch of 3D scale factors.
+
+    Args:
+        x: a `Tensor` of shape [*, 3], where * represents arbitrarily many leading (batch) dimensions
+        name: an optional name for the operation
+
+    Returns:
+        a `Tensor` containing scaling matrices, of shape [*, 4, 4], where * represents the same leading
+        dimensions as present on `x`
+    """
+
+    with ops.name_scope(name, 'Scale', []) as scope:
+        x = tf.convert_to_tensor(x, name='x')
+        return tf.linalg.diag(tf.concat([x, tf.ones_like(x[..., :1])], axis=-1))  # indexed by *, x/y/z/w (in), x/y/z/w (out)
+
+
 def perspective_projection(near, far, right, aspect, name=None):
     """Constructs a perspective projection matrix.
 
