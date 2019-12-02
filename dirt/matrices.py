@@ -12,7 +12,7 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 
 
-def rodrigues(vectors, name=None):
+def rodrigues(vectors, name=None, three_by_three=False):
     """Constructs a batch of angle-axis rotation matrices.
 
     Angle-axis rotations are defined by a single 3D vector, whose direction corresponds to the axis of
@@ -23,10 +23,11 @@ def rodrigues(vectors, name=None):
     Args:
         vectors: a `Tensor` of shape [*, 3], where * represents arbitrarily many leading (batch) dimensions
         name: an optional name for the operation
+        three_by_three: return 3x3 matrices without w coordinates
 
     Returns:
-        a `Tensor` containing rotation matrices, of shape [*, 4, 4], where * represents the same leading
-        dimensions as present on `vectors`
+        a `Tensor` containing rotation matrices, of shape [*, D, D], where * represents the same leading
+        dimensions as present on `vectors`, and D = 3 if three_by_three else 4
     """
 
     # vectors is indexed by *, x/y/z, so the result is indexed by *, x/y/z (in), x/y/z (out)
@@ -53,7 +54,11 @@ def rodrigues(vectors, name=None):
         s = tf.sin(norms)[..., tf.newaxis, tf.newaxis]
 
         result_3x3 = c * tf.eye(3, 3) + (1 - c) * vectors[..., :, tf.newaxis] * vectors[..., tf.newaxis, :] + s * K
-        return pad_3x3_to_4x4(result_3x3)
+
+        if three_by_three:
+            return result_3x3
+        else:
+            return pad_3x3_to_4x4(result_3x3)
 
 
 def translation(x, name=None):
