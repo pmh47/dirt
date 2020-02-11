@@ -205,6 +205,8 @@ To avoid having to create an on-screen context for rendering, we use an Nvidia e
 
 Several other differentiable renderers have been described and released in recent years:
 
+- [DEODR](https://github.com/martinResearch/DEODR) (de la Gorce et al., PAMI 2011) supports Gouraud shading with textures, using custom CPU/GPU rendering that has well-defined gradients even at occlusion boundaries. It has bindings for TensorFlow, PyTorch, and Matlab
+
 - [OpenDR](https://github.com/mattloper/opendr) (Loper and Black, ECCV 2014) supports Gouraud shading using Mesa CPU-based rendering, and uses filter-based derivatives similar to DIRT. It uses its own custom automatic differentiation framework written in python, hence does not integrate smoothly with TensorFlow
 
 - [Neural 3D Mesh Renderer](https://github.com/hiroharu-kato/neural_renderer) (Kato et al., CVPR 2018) supports similar functionality to DIRT, using a slightly different formulation for the approximate derivatives, but implements a custom rasterisation operation, rather than using OpenGL. It integrates with Chainer, but not TensorFlow (a PyTorch re-implementation is also available)
