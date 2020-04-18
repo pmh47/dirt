@@ -159,11 +159,13 @@ sudo docker run --runtime=nvidia <image_name> /bin/bash
 
 - You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa or Hybris, their libGL or libEGL may be used (or may even have overwritten the Nvidia versions), and these will not work with DIRT
 
+- If you use a version of Ubuntu older than 18.04, and you use the Ubuntu-packaged Nvidia driver (i.e. installed with apt not Nvidia's runfile), then you may need to use `export LD_PRELOAD=/usr/lib/nvidia-XXX/libEGL.so` (replacing XXX with your driver version) to ensure that the Nvidia version of libEGL is used
+
+- If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`
+
 - If you are using TensorFlow 1.14, there are some binary compatibility issues when using older versions of python (e.g. 2.7 and 3.5), due to compiler version mismatches. These result in a segfault at `tensorflow::shape_inference::InferenceContext::GetAttr` or similar. To resolve, either upgrade python to 3.7, or downgrade TensorFlow to 1.13, or build DIRT with gcc 4.8
 
 - You should ensure that graphics operations are enabled for your GPU (ALL_ON operation mode set by `nvidia-smi --gom=0`) -- this is the default, and does not need changing in most cases
-
-- If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`
 
 - If you see an error `cudaGraphicsGLRegisterImage failed: cudaErrorNotSupported`, this may be due to insufficient GPU memory. Note that DIRT allocates some memory through OpenGL outside of TensorFlow's allocator, so it may be necessary to reduce the memory reserved by TensorFlow (e.g. by using `allow_growth=True` in the session config)
 
