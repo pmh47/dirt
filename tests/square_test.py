@@ -38,16 +38,23 @@ def get_dirt_pixels():
 
 def main():
 
-    session = tf.Session()
-    with session.as_default():
+    if '.' in tf.__version__ and int(tf.__version__.split('.')[0]) < 2:
 
-        non_dirt_pixels = get_non_dirt_pixels().eval()
-        dirt_pixels = get_dirt_pixels().eval()
+        session = tf.Session()
+        with session.as_default():
 
-        if np.all(non_dirt_pixels == dirt_pixels):
-            print('successful: all pixels agree')
-        else:
-            print('failed: {} pixels disagree'.format(np.sum(non_dirt_pixels != dirt_pixels)))
+            non_dirt_pixels = get_non_dirt_pixels().eval()
+            dirt_pixels = get_dirt_pixels().eval()
+
+    else:
+
+        non_dirt_pixels = get_non_dirt_pixels().numpy()
+        dirt_pixels = get_dirt_pixels().numpy()
+
+    if np.all(non_dirt_pixels == dirt_pixels):
+        print('successful: all pixels agree')
+    else:
+        print('failed: {} pixels disagree'.format(np.sum(non_dirt_pixels != dirt_pixels)))
 
 
 if __name__ == '__main__':
