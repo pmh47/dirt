@@ -132,9 +132,9 @@ To sanity-check your build, run `python tests/square_test.py`, which should prod
 
 - If the build cannot find `X11/Xlib.h`, install the system package `libx11-dev` or `libX11-devel`
 
-- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa or Hybris, their libGL or libEGL may be used (or may even have overwritten the Nvidia versions), and these will not work with DIRT
+- You should ensure that libGL and libEGL are in a location on `LD_LIBRARY_PATH`, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa or Hybris, their libGL or libEGL may be used (or may even have overwritten the Nvidia versions), and these will not work with DIRT
 
-- If you use a version of Ubuntu older than 18.04, and you use the Ubuntu-packaged Nvidia driver (i.e. installed with apt not Nvidia's runfile), then the correct GL libraries may not be found at runtime. Use `export LD_LIBRARY_PATH=/usr/lib/nvidia-XXX` and possibly `export LD_PRELOAD=/usr/lib/nvidia-XXX/libEGL.so` (replacing XXX with your driver version) to ensure that the Nvidia version of libEGL is used. If cmake fails to find OpenGL or EGL during setup, then also `export CMAKE_LIBRARY_PATH=/usr/lib/nvidia-XXX` before installing
+- If you use a version of Ubuntu older than 18.04, and you use the Ubuntu-packaged Nvidia driver (i.e. installed with apt not Nvidia's runfile), then the correct GL libraries may not be found at runtime. Use `export LD_LIBRARY_PATH=/usr/lib/nvidia-XXX` (replacing XXX with your driver version). If that is not sufficient then also use `export LD_PRELOAD=/usr/lib/nvidia-XXX/libEGL.so:/usr/lib/nvidia-XXX/libOpenGL.so` to ensure that the Nvidia version of libEGL is used. If cmake fails to find OpenGL or EGL during setup, then also `export CMAKE_LIBRARY_PATH=/usr/lib/nvidia-XXX` before installing
 
 - If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`
 
