@@ -118,7 +118,36 @@ pip install -e .
 
 To sanity-check your build, run `python tests/square_test.py`, which should produce the output `successful: all pixels agree`.
 
-#### Docker
+
+### Troubleshooting
+
+- If the build cannot find `GL/gl.h` and `GL/glext.h`, you can get suitable versions of these by running the following from the `dirt` directory:
+    ```
+    mkdir external/GL ; cd external/GL
+    wget https://raw.githubusercontent.com/mesa3d/mesa/master/include/GL/gl.h
+    wget https://raw.githubusercontent.com/mesa3d/mesa/master/include/GL/glext.h
+    cd ../..
+    export INCLUDE=$PWD/external:$INCLUDE
+    ```
+
+- If the build cannot find `X11/Xlib.h`, install the system package `libx11-dev` or `libX11-devel`
+
+- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa or Hybris, their libGL or libEGL may be used (or may even have overwritten the Nvidia versions), and these will not work with DIRT
+
+- If you use a version of Ubuntu older than 18.04, and you use the Ubuntu-packaged Nvidia driver (i.e. installed with apt not Nvidia's runfile), then the correct GL libraries may not be found at runtime. Use `export LD_LIBRARY_PATH=/usr/lib/nvidia-XXX` and possibly `export LD_PRELOAD=/usr/lib/nvidia-XXX/libEGL.so` (replacing XXX with your driver version) to ensure that the Nvidia version of libEGL is used. If cmake fails to find OpenGL or EGL during setup, then also `export CMAKE_LIBRARY_PATH=/usr/lib/nvidia-XXX` before installing
+
+- If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`
+
+- If you are using TensorFlow 1.14, there are some binary compatibility issues when using older versions of python (e.g. 2.7 and 3.5), due to compiler version mismatches. These result in a segfault at `tensorflow::shape_inference::InferenceContext::GetAttr` or similar. To resolve, either upgrade python to 3.7, or downgrade TensorFlow to 1.13, or build DIRT with gcc 4.8
+
+- You should ensure that graphics operations are enabled for your GPU (ALL_ON operation mode set by `nvidia-smi --gom=0`) -- this is the default, and does not need changing in most cases
+
+- If you see an error `cudaGraphicsGLRegisterImage failed: cudaErrorNotSupported`, this may be due to insufficient GPU memory. Note that DIRT allocates some memory through OpenGL outside of TensorFlow's allocator, so it may be necessary to reduce the memory reserved by TensorFlow (e.g. by using `allow_growth=True` in the session config)
+
+- If you see an error `Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR` when initialising cudnn after DIRT, this may again be due to insufficient GPU memory (see previous point).
+
+
+### Docker
 
 - Install [docker](http://docker.com)
 - Install [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)
@@ -144,33 +173,6 @@ docker build -t <image_name> --build-arg CUDA_BASE_VERSION=$(echo $CUDA_BASE_VER
 sudo docker run --runtime=nvidia <image_name> /bin/bash
 ```
 
-#### Troubleshooting:
-
-- If the build cannot find `GL/gl.h` and `GL/glext.h`, you can get suitable versions of these by running the following from the `dirt` directory:
-    ```
-    mkdir external/GL ; cd external/GL
-    wget https://raw.githubusercontent.com/mesa3d/mesa/master/include/GL/gl.h
-    wget https://raw.githubusercontent.com/mesa3d/mesa/master/include/GL/glext.h
-    cd ../..
-    export INCLUDE=$PWD/external:$INCLUDE
-    ```
-
-- If the build cannot find `X11/Xlib.h`, install the system package `libx11-dev` or `libX11-devel`
-
-- You should ensure that libGL and libEGL are in a location on LD_LIBRARY_PATH, and that these are the versions shipped with your Nvidia driver. In particular, if you have installed Mesa or Hybris, their libGL or libEGL may be used (or may even have overwritten the Nvidia versions), and these will not work with DIRT
-
-- If you use a version of Ubuntu older than 18.04, and you use the Ubuntu-packaged Nvidia driver (i.e. installed with apt not Nvidia's runfile), then you may need to use `export LD_PRELOAD=/usr/lib/nvidia-XXX/libEGL.so` (replacing XXX with your driver version) to ensure that the Nvidia version of libEGL is used
-
-- If you are using Ubuntu 18.04 or newer, with the Ubuntu-packaged Nvidia drivers (i.e. installed with apt not Nvidia's runfile), and libOpenGL.so and/or libEGL.so is missing, then run `sudo apt install libglvnd-dev`
-
-- If you are using TensorFlow 1.14, there are some binary compatibility issues when using older versions of python (e.g. 2.7 and 3.5), due to compiler version mismatches. These result in a segfault at `tensorflow::shape_inference::InferenceContext::GetAttr` or similar. To resolve, either upgrade python to 3.7, or downgrade TensorFlow to 1.13, or build DIRT with gcc 4.8
-
-- You should ensure that graphics operations are enabled for your GPU (ALL_ON operation mode set by `nvidia-smi --gom=0`) -- this is the default, and does not need changing in most cases
-
-- If you see an error `cudaGraphicsGLRegisterImage failed: cudaErrorNotSupported`, this may be due to insufficient GPU memory. Note that DIRT allocates some memory through OpenGL outside of TensorFlow's allocator, so it may be necessary to reduce the memory reserved by TensorFlow (e.g. by using `allow_growth=True` in the session config)
-
-- If you see an error `Could not create cudnn handle: CUDNN_STATUS_INTERNAL_ERROR` when initialising cudnn after DIRT, this may again be due to insufficient GPU memory (see previous point).
-
 
 ## Usage
 
@@ -190,13 +192,13 @@ Then, lighting calculations are performed per-pixel in a second pass.
 
 ## How does DIRT work?
 
-#### Theory
+### Theory
 
 DIRT uses filter-based derivatives, inspired by OpenDR (Loper and Black, ECCV 2014).
 It makes considerable effort to return correctly-behaving derivatives even in cases of self-occlusion, where other differentiable renderers can fail.
 
 
-#### Implementation
+### Implementation
 
 DIRT uses OpenGL for rasterisation, as this is fast, accurate, and very mature.
 We use Nvidia's OpenGL / CUDA interop to allow the vertices and pixels to remain on the same GPU both for processing by TensorFlow and for rasterisation, thus minimising copying overhead compared with other approaches.
