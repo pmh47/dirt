@@ -34,8 +34,8 @@ def unproject_pixels_to_rays(pixel_locations, clip_to_world_matrix, image_size, 
     Returns:
         pixel_ray_starts_world: a `Tensor` of shape [A1, ..., An, B1, ..., Bm, 3], which for each pixel-location, gives the world-space
             location of the intersection of the corresponding ray with the camera near-plane
-        pixel_ray_deltas_world: similar to pixel_ray_starts_world, but giving the world-space direction vector for each ray, pointing
-            away from the camera
+        pixel_ray_deltas_world: similar to pixel_ray_starts_world, but giving an unnormalised world-space direction vector for each
+            ray, pointing away from the camera
     """
 
     with ops.name_scope(name, 'UnprojectPixelsToRays', [pixel_locations, clip_to_world_matrix, image_size]) as scope:
@@ -44,12 +44,23 @@ def unproject_pixels_to_rays(pixel_locations, clip_to_world_matrix, image_size, 
         clip_to_world_matrix = tf.convert_to_tensor(clip_to_world_matrix, name='clip_to_world_matrix', dtype=tf.float32)
         image_size = tf.convert_to_tensor(image_size, name='image_size', dtype=tf.int32)
 
-        per_iib_dims = pixel_locations.get_shape().ndims - image_size.get_shape().ndims
+        per_iib_dims = pixel_locations.get_shape().ndims - image_size.get_shape().ndims  # corresponds to m in the docstring
         image_size = tf.reshape(image_size, image_size.get_shape()[:-1].as_list() + [1] * per_iib_dims + [2])
-        clip_to_world_matrix = tf.broadcast_to(
-            tf.reshape(clip_to_world_matrix, clip_to_world_matrix.get_shape()[:-2].as_list() + [1] * per_iib_dims + [4, 4]),
-            pixel_locations.get_shape()[:-1].as_list() + [4, 4]
+        clip_to_world_matrix = tf.reshape(
+            clip_to_world_matrix,
+            tf.concat([
+                tf.shape(clip_to_world_matrix)[:-2],
+                [1] * per_iib_dims + [4, 4]
+            ], axis=0)
         )
+
+        # This is needed for old versions of tensorflow as tf.matmul did not previously support broadcasting
+        version_bits = tf.version.VERSION.split('.')
+        if int(version_bits[0]) <= 1 and int(version_bits[1]) < 14:
+            clip_to_world_matrix = tf.broadcast_to(
+                clip_to_world_matrix,
+                tf.concat([tf.shape(pixel_locations)[:-1], [4, 4]], axis=0)
+            )
 
         pixel_locations_ndc = _pixel_to_ndc(pixel_locations, tf.cast(image_size, tf.float32))
         pixel_ray_starts_world = _unproject_ndc_to_world(tf.concat([pixel_locations_ndc, -1. * tf.ones_like(pixel_locations_ndc[..., :1])], axis=-1), clip_to_world_matrix)  # indexed by A*, B*, x/y/z
