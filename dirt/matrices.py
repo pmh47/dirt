@@ -38,7 +38,7 @@ def rodrigues(vectors, name=None, three_by_three=False):
         vectors = tf.convert_to_tensor(vectors, name='vectors')
 
         vectors += 1.e-12  # for numerical stability of the derivative, which is otherwise NaN at exactly zero; also ensures norms are never zero
-        norms = tf.norm(vectors, axis=-1, keep_dims=True)  # indexed by *, singleton
+        norms = tf.norm(vectors, axis=-1, keepdims=True)  # indexed by *, singleton
         vectors /= norms
         norms = norms[..., 0]  # indexed by *
 
