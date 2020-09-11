@@ -2,8 +2,12 @@ import os
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
-_lib_path = os.path.dirname(__file__)
-_rasterise_module = tf.load_op_library(_lib_path + '/librasterise.so')
+try:
+    _lib_path = os.path.dirname(__file__)
+    _rasterise_module = tf.load_op_library(_lib_path + '/librasterise.so')
+except Exception as e:
+    print('WARNING: failed to load librasterise.so; rasterisation functions will be unavailable:\n', e)
+    _rasterise_module = None
 
 
 def rasterise(background, vertices, vertex_colors, faces, height=None, width=None, channels=None, name=None):
