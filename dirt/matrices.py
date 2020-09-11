@@ -108,11 +108,12 @@ def scale(x, name=None):
 
 
 def perspective_projection(near, far, right, aspect, name=None):
-    """Constructs a perspective projection matrix.
+    """Constructs a batch of perspective projection matrices.
 
-    This function returns a perspective projection matrix, using the OpenGL convention that the camera
-    looks along the negative-z axis in view/camera space, and the positive-z axis in clip space.
+    This function returns a batch of perspective projection matrices, using the OpenGL convention that the
+    camera looks along the negative-z axis in view/camera space, and the positive-z axis in clip space.
     Multiplying view-space homogeneous coordinates by this matrix maps them into clip space.
+    All parameters must have shapes that can be broadcast together to give some arbitrary shape [A1...An]
 
     Args:
         near: distance to the near clipping plane; geometry nearer to the camera than this will not be rendered
@@ -122,22 +123,34 @@ def perspective_projection(near, far, right, aspect, name=None):
         name: an optional name for the operation
 
     Returns:
-        a 4x4 `Tensor` containing the projection matrix
+        a `Tensor` containing projection matrices, of shape [A1...An, 4, 4]
     """
 
     with ops.name_scope(name, 'PerspectiveProjection', [near, far, right, aspect]) as scope:
+
         near = tf.convert_to_tensor(near, name='near')
         far = tf.convert_to_tensor(far, name='far')
         right = tf.convert_to_tensor(right, name='right')
         aspect = tf.convert_to_tensor(aspect, name='aspect')
+
         top = right * aspect
-        elements = [
-            [near / right, 0., 0., 0, ],
-            [0., near / top, 0., 0.],
-            [0., 0., -(far + near) / (far - near), -2. * far * near / (far - near)],
-            [0., 0., -1., 0.]
+
+        broadcast_shape = (near + far + top + right).shape
+        near = tf.broadcast_to(near, broadcast_shape)
+        far = tf.broadcast_to(far, broadcast_shape)
+        top = tf.broadcast_to(top, broadcast_shape)
+        right = tf.broadcast_to(right, broadcast_shape)
+        zeros = tf.zeros(broadcast_shape)
+
+        elements_tr = [
+            [near / right, zeros, zeros, zeros],
+            [zeros, near / top, zeros, zeros],
+            [zeros, zeros, -(far + near) / (far - near), -2. * far * near / (far - near)],
+            [zeros, zeros, zeros - 1., zeros]
         ]  # indexed by x/y/z/w (out), x/y/z/w (in)
-        return tf.transpose(tf.convert_to_tensor(elements, dtype=tf.float32))
+        elements_tr = tf.convert_to_tensor(elements_tr, dtype=tf.float32)
+
+        return tf.transpose(elements_tr, list(range(2, elements_tr.shape.ndims)) + [1, 0])
 
 
 def pad_3x3_to_4x4(matrix, name=None):
