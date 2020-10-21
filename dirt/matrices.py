@@ -10,7 +10,7 @@ sequence of indices, over all of which the operation is mapped
 
 import tensorflow as tf
 from tensorflow.python.framework import ops
-
+from packaging import version
 
 def rodrigues(vectors, name=None, three_by_three=False):
     """Constructs a batch of angle-axis rotation matrices.
@@ -38,7 +38,12 @@ def rodrigues(vectors, name=None, three_by_three=False):
         vectors = tf.convert_to_tensor(vectors, name='vectors')
 
         vectors += 1.e-12  # for numerical stability of the derivative, which is otherwise NaN at exactly zero; also ensures norms are never zero
-        norms = tf.norm(vectors, axis=-1, keep_dims=True)  # indexed by *, singleton
+        
+        if version.parse(tf.__version__)>=version.parse('2.0.0'):
+            norms = tf.compat.v1.norm(vectors, axis=-1, keep_dims=True)  # indexed by *, singleton
+        else:
+            norms = tf.norm(vectors, axis=-1, keep_dims=True)  # indexed by *, singleton
+            
         vectors /= norms
         norms = norms[..., 0]  # indexed by *
 
