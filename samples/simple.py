@@ -7,6 +7,7 @@ import cv2  # OpenCV, used only to display the result
 import dirt
 import dirt.matrices as matrices
 import dirt.lighting as lighting
+tf.compat.v1.disable_eager_execution()
 
 
 frame_width, frame_height = 640, 480
@@ -24,7 +25,7 @@ def build_cube():
 
 
 def unit(vector):
-    return tf.convert_to_tensor(vector) / tf.norm(vector)
+    return tf.convert_to_tensor(value=vector) / tf.norm(tensor=vector)
 
 
 def main():
@@ -73,7 +74,7 @@ def main():
         width=frame_width, height=frame_height, channels=3
     )
 
-    session = tf.Session()
+    session = tf.compat.v1.Session()
     with session.as_default():
 
         pixels_eval = pixels.eval()

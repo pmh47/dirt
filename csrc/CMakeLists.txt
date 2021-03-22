@@ -10,7 +10,6 @@ find_library(EGL_LIBRARIES NAMES egl EGL REQUIRED)
 
 # Search for cuda headers (using the form of path that tensorflow includes them with), based on cmake-inferred nvcc, or $CUDA_HOME
 get_filename_component(NVCC_DIR ${CMAKE_CUDA_COMPILER} DIRECTORY)
-find_path(CUDA_INCLUDE_DIR NAMES cuda/include/cuda.h HINTS ${NVCC_DIR}/../.. PATHS ENV CUDA_HOME REQUIRED)
 
 # Ask tensorflow for its compile flags; one should therefore make sure cmake is run with the venv active that the op will be used in
 execute_process(COMMAND python -c "import tensorflow; print(' '.join(tensorflow.sysconfig.get_compile_flags()))" OUTPUT_VARIABLE Tensorflow_DEFAULT_COMPILE_FLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -32,13 +31,13 @@ execute_process(COMMAND python -c "import tensorflow; print(' '.join(tensorflow.
 set(Tensorflow_LINK_FLAGS "${Tensorflow_DEFAULT_LINK_FLAGS}" CACHE STRING "Tensorflow linker flags for custom ops")
 
 # in the following, we need ../external/tensorflow for cuda_config.h in tf versions with #16959 unfixed
-include_directories(SYSTEM ../external/tensorflow ${NSYNC_INCLUDE_DIR} ${CUDA_INCLUDE_DIR} ${EGL_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
+include_directories(SYSTEM ../external/tensorflow ${NSYNC_INCLUDE_DIR} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES} ${EGL_INCLUDE_DIR} ${OPENGL_INCLUDE_DIR})
 include_directories(${Tensorflow_INCLUDE_DIRS} ${Tensorflow_INCLUDE_DIRS}/external/nsync/public)
 
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffast-math")
 
 # in the following, NDEBUG is set to avoid issues with constexpr in absl's string_view.h
-set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -arch=sm_30 --expt-relaxed-constexpr -DNDEBUG")
+set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -DNDEBUG")
 
 add_library(
     rasterise SHARED

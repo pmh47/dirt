@@ -14,9 +14,9 @@
 #include "tensorflow/core/platform/stream_executor.h"
 
 // This form of include path matches what the TensorFlow headers use
-#include <cuda/include/cuda.h>
-#include <cuda/include/cuda_runtime_api.h>
-#include <cuda/include/cuda_gl_interop.h>
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+#include <cuda_gl_interop.h>
 
 #define EIGEN_USE_GPU
 #include "unsupported/Eigen/CXX11/src/Tensor/TensorDeviceCuda.h"
