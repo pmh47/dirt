@@ -10,6 +10,7 @@ def _pixel_to_ndc(pixel_locations, image_size):
 def _unproject_ndc_to_world(x_ndc, clip_to_world_matrix):
     # x_ndc and result are indexed by *, x/y/z (i.e. not homogeneous)
     # The z-coordinate of the result does not have an intuitive meaning, but is affinely related to the world-space z
+    # with tf.device('/cpu:0'):  # ** necessary under CUDA 10.0 due to a bug in cublasGemmBatchedEx
     x_world_scaled = tf.squeeze(tf.matmul(
         tf.expand_dims(tf.concat([x_ndc, tf.ones_like(x_ndc[..., :1])], axis=-1), axis=-2),
         clip_to_world_matrix
@@ -40,19 +41,19 @@ def unproject_pixels_to_rays(pixel_locations, clip_to_world_matrix, image_size, 
 
     with ops.name_scope(name, 'UnprojectPixelsToRays', [pixel_locations, clip_to_world_matrix, image_size]) as scope:
 
-        pixel_locations = tf.convert_to_tensor(pixel_locations, name='pixel_locations', dtype=tf.float32)
-        clip_to_world_matrix = tf.convert_to_tensor(clip_to_world_matrix, name='clip_to_world_matrix', dtype=tf.float32)
-        image_size = tf.convert_to_tensor(image_size, name='image_size', dtype=tf.int32)
+        pixel_locations = tf.convert_to_tensor(pixel_locations, name='pixel_locations', dtype=tf.float32)  # iib*, pixel*, xy
+        clip_to_world_matrix = tf.convert_to_tensor(clip_to_world_matrix, name='clip_to_world_matrix', dtype=tf.float32)  # iib*, xyzw (in), xyzw (out)
+        image_size = tf.convert_to_tensor(image_size, name='image_size', dtype=tf.int32)  # iib*, xy
 
         per_iib_dims = pixel_locations.get_shape().ndims - image_size.get_shape().ndims  # corresponds to m in the docstring
-        image_size = tf.reshape(image_size, image_size.get_shape()[:-1].as_list() + [1] * per_iib_dims + [2])
+        image_size = tf.reshape(image_size, tf.concat([tf.shape(image_size)[:-1], [1] * per_iib_dims + [2]], axis=0))
         clip_to_world_matrix = tf.reshape(
             clip_to_world_matrix,
             tf.concat([
                 tf.shape(clip_to_world_matrix)[:-2],
                 [1] * per_iib_dims + [4, 4]
             ], axis=0)
-        )
+        )  # iib*, pixel*, xyzw (in), xyzw (out)
 
         # This is needed for old versions of tensorflow as tf.matmul did not previously support broadcasting
         version_bits = tf.version.VERSION.split('.')
@@ -62,7 +63,7 @@ def unproject_pixels_to_rays(pixel_locations, clip_to_world_matrix, image_size, 
                 tf.concat([tf.shape(pixel_locations)[:-1], [4, 4]], axis=0)
             )
 
-        pixel_locations_ndc = _pixel_to_ndc(pixel_locations, tf.cast(image_size, tf.float32))
+        pixel_locations_ndc = _pixel_to_ndc(pixel_locations, tf.cast(image_size, tf.float32))  # iib*, pixel*, xy
         pixel_ray_starts_world = _unproject_ndc_to_world(tf.concat([pixel_locations_ndc, -1. * tf.ones_like(pixel_locations_ndc[..., :1])], axis=-1), clip_to_world_matrix)  # indexed by A*, B*, x/y/z
         pixel_ray_deltas_world = _unproject_ndc_to_world(tf.concat([pixel_locations_ndc, tf.zeros_like(pixel_locations_ndc[..., :1])], axis=-1), clip_to_world_matrix) - pixel_ray_starts_world
 
