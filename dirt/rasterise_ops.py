@@ -199,7 +199,7 @@ def _rasterise_deferred_internal(background, vertices, attributes, faces, shader
         else:
             pixels = shader_fn(gbuffer, *shader_additional_inputs)
 
-        def grad(d_loss_by_pixels):
+        def grad(d_loss_by_pixels, variables=None):
 
             # Calculate the derivative wrt vertices, but filtering the shaded image instead of the gbuffer -- these are the 'final', correct
             # gradient wrt the vertices, but for the attributes and background, we need to account for shader_fn
@@ -213,19 +213,20 @@ def _rasterise_deferred_internal(background, vertices, attributes, faces, shader
             # Then, pass these derivatives back into the rasterise-grad op to propagate to vertex/background attributes
 
             if tf.executing_eagerly():
-                d_loss_by_gbuffer, d_loss_by_shader_additional_inputs = shader_tape.gradient(
+                d_loss_by_gbuffer, d_loss_by_shader_additional_inputs, d_loss_by_shader_variables = shader_tape.gradient(
                     pixels,
-                    [gbuffer, shader_additional_inputs],
+                    [gbuffer, shader_additional_inputs, variables if variables is not None else []],
                     d_loss_by_pixels
                 )
             else:
-                d_loss_by_gbuffer_and_shader_additional_inputs = tf.gradients(
+                d_loss_by_gbuffer_and_shader_additional_inputs_and_variables = tf.gradients(
                     pixels,
-                    [gbuffer] + list(shader_additional_inputs),
+                    [gbuffer] + list(shader_additional_inputs) + list(variables if variables is not None else []),
                     d_loss_by_pixels
                 )
-                d_loss_by_gbuffer = d_loss_by_gbuffer_and_shader_additional_inputs[0]
-                d_loss_by_shader_additional_inputs = d_loss_by_gbuffer_and_shader_additional_inputs[1:]
+                d_loss_by_gbuffer = d_loss_by_gbuffer_and_shader_additional_inputs_and_variables[0]
+                d_loss_by_shader_additional_inputs = d_loss_by_gbuffer_and_shader_additional_inputs_and_variables[1 : 1 + len(shader_additional_inputs)]
+                d_loss_by_shader_variables = d_loss_by_gbuffer_and_shader_additional_inputs_and_variables[1 + len(shader_additional_inputs):]
 
             # The attribute and background gradients computed by the following are correct; the vertex gradients are not, as they
             # are based on filtering the gbuffer instead of the shaded output
@@ -235,9 +236,14 @@ def _rasterise_deferred_internal(background, vertices, attributes, faces, shader
                 single_or_batch
             )
 
-            return [
+            non_variable_grads = [
                 d_loss_by_vertices, None, d_loss_by_attributes['grad_vertex_colors'], d_loss_by_attributes['grad_background']
             ] + list(d_loss_by_shader_additional_inputs)
+
+            if variables is None:
+                return non_variable_grads
+            else:
+                return non_variable_grads, d_loss_by_shader_variables
 
         return pixels, grad
 
@@ -246,6 +252,7 @@ def _rasterise_deferred_internal(background, vertices, attributes, faces, shader
         vertices = tf.convert_to_tensor(vertices, name='vertices', dtype=tf.float32)
         attributes = tf.convert_to_tensor(attributes, name='vertex_attributes', dtype=tf.float32)
         faces = tf.convert_to_tensor(faces, name='faces', dtype=tf.int32)
+        shader_additional_inputs = list(map(tf.convert_to_tensor, shader_additional_inputs))
 
         return _impl(vertices, faces, attributes, background, *shader_additional_inputs)
 
@@ -323,3 +330,4 @@ def rasterise_batch_deferred(background_attributes, vertices, vertex_attributes,
     """
 
     return _rasterise_deferred_internal(background_attributes, vertices, vertex_attributes, faces, shader_fn, shader_additional_inputs, 'batch', name)
+
