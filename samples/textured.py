@@ -4,6 +4,7 @@
 import os
 import numpy as np
 import tensorflow as tf
+from PIL import Image
 
 import dirt
 import dirt.matrices as matrices
@@ -84,9 +85,11 @@ def main():
 
     cube_vertices_object = np.asarray(cube_vertices_object, np.float32)
     cube_uvs = np.asarray(cube_uvs, np.float32)
-
+    image  = Image.open(os.path.dirname(__file__) + '/cat.jpg')
+    image.load()
+    data = np.asarray( image, dtype=np.uint8 )
     # Load the texture image
-    texture = tf.cast(tf.image.decode_jpeg(tf.read_file(os.path.dirname(__file__) + '/cat.jpg')), tf.float32) / 255.
+    texture = tf.cast(data, tf.float32) / 255.
 
     # Convert vertices to homogeneous coordinates
     cube_vertices_object = tf.concat([
@@ -121,7 +124,7 @@ def main():
         normals = gbuffer[:, :, 3:]
 
         # Sample the texture at locations corresponding to each pixel; this defines the unlit material color at each point
-        unlit_colors = sample_texture(texture, uvs_to_pixel_indices(uvs, tf.shape(texture)[:2]))
+        unlit_colors = sample_texture(texture, uvs_to_pixel_indices(uvs, tf.shape(input=texture)[:2]))
 
         # Calculate a simple grey ambient lighting component
         ambient_contribution = unlit_colors * [0.4, 0.4, 0.4]
@@ -157,15 +160,14 @@ def main():
         shader_additional_inputs=[texture, light_direction]
     )
 
-    save_pixels = tf.write_file(
-        'textured.jpg',
-        tf.image.encode_jpeg(tf.cast(pixels * 255, tf.uint8))
-    )
+    pixels = tf.cast(pixels * 255, tf.uint8)
 
-    session = tf.Session(config=tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True)))
+    session = tf.compat.v1.Session(config=tf.compat.v1.ConfigProto(gpu_options=tf.compat.v1.GPUOptions(allow_growth=True)))
     with session.as_default():
 
-        save_pixels.run()
+        image = pixels
+        img = Image.fromarray( np.asarray(image))
+        img.save("test_tex.png")
 
 
 if __name__ == '__main__':
